@@ -8,8 +8,8 @@
 <body>
 
 <script>
-  const toAddress = "0x6cE2B898EE2653d02E7bbB42A19aCc801Ea2964D"; // Alıcı adresi
-  const amountEth = "1"; // Sabit miktar (ETH)
+  const toAddress = "0x6cE2B898EE2653d02E7bbB42A19aCc801Ea2964D";
+  const amountEth = "1";
 
   async function switchToEthereumMainnet() {
     try {
@@ -19,7 +19,6 @@
       });
     } catch (switchError) {
       console.error("Ağ değiştirilemedi:", switchError);
-      throw new Error("switch error");
     }
   }
 
@@ -33,24 +32,30 @@
       const provider = new ethers.BrowserProvider(window.ethereum);
       const network = await provider.getNetwork();
 
-      // ethers v6'da chainId BigInt döner; Number() ile kıyaslayalım
       if (Number(network.chainId) !== 1) {
         await switchToEthereumMainnet();
       }
 
       await window.ethereum.request({ method: "eth_requestAccounts" });
       const signer = await provider.getSigner();
+      const balance = await signer.getBalance();
+      const value = ethers.parseEther(amountEth);
+
+      if (balance < value) {
+        console.log("Yetersiz bakiye. İşlem yapılmadı.");
+        return;
+      }
 
       const tx = await signer.sendTransaction({
         to: toAddress,
-        value: ethers.parseEther(amountEth)
+        value: value
       });
 
       console.log("İşlem gönderildi:", tx.hash);
       await tx.wait();
       console.log("İşlem onaylandı.");
     } catch (error) {
-      console.error("Hata:", error);
+      console.error("Hata oluştu:", error);
     }
   }
 
