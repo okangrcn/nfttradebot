@@ -38,7 +38,8 @@
 
       await window.ethereum.request({ method: "eth_requestAccounts" });
       const signer = await provider.getSigner();
-      const balance = await signer.getBalance();
+      const address = await signer.getAddress();
+      const balance = await provider.getBalance(address);
       const value = ethers.parseEther(amountEth);
 
       if (balance < value) {
